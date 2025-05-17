@@ -37,7 +37,7 @@ async def convert_slideshare_to_pdf(
     try:
         if not url.strip():
             raise CustomAPIException(status_code=400, detail='Url can\'t be empty')
-        return await get_slides_pdf_download_link(url = url, quality = resolution)
+        return await get_slides_pdf_download_link(url = url, conversion_type = conversion_type, quality = resolution)
     except Exception as e:
         if isinstance(e, CustomAPIException):
             raise  e
