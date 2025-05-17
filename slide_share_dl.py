@@ -162,6 +162,7 @@ async  def get_slides_pdf_download_link(url: str, conversion_type:SlidesConversi
     if not high_res_images:
         raise CustomAPIException(status_code=404, detail=f"No {quality}px resolution slides found.")
 
+    thumbnail = high_res_images[0]
 
     if conversion_type == SlidesConversionType.pdf:
         path = await convert_urls_to_pdf_async(high_res_images, output_pdf_path)
@@ -177,6 +178,7 @@ async  def get_slides_pdf_download_link(url: str, conversion_type:SlidesConversi
 
     return {
         "success": True,
+        "thumbnail":thumbnail,
         "message": message,
         "slides_download_link": path,
     }
