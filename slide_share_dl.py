@@ -10,7 +10,6 @@ from exceptions import CustomAPIException
 import httpx
 import asyncio
 
-from main import ConversionType
 
 
 def validate_url(url):
@@ -136,7 +135,9 @@ async def convert_urls_to_zip_async(image_urls, output_zip_path="slides.zip"):
 
     return output_zip_path
 
-async  def get_slides_pdf_download_link(url: str, conversion_type:ConversionType, quality: int = 2048):
+from utils import SlidesConversionType
+
+async  def get_slides_pdf_download_link(url: str, conversion_type:SlidesConversionType, quality: int = 2048):
     validate_url(url)
 
     path_parts = urlparse(url).path.strip("/").split("/")
@@ -161,17 +162,21 @@ async  def get_slides_pdf_download_link(url: str, conversion_type:ConversionType
     if not high_res_images:
         raise CustomAPIException(status_code=404, detail=f"No {quality}px resolution slides found.")
 
-    if conversion_type == ConversionType.pdf:
+
+    if conversion_type == SlidesConversionType.pdf:
         path = await convert_urls_to_pdf_async(high_res_images, output_pdf_path)
-    elif conversion_type == ConversionType.pptx:
+        message = "PDF generated successfully."
+    elif conversion_type == SlidesConversionType.pptx:
         path = await convert_urls_to_pptx_async(high_res_images, output_pptx_path)
-    elif conversion_type == ConversionType.images_zip:
+        message = "PPTX generated successfully."
+    elif conversion_type == SlidesConversionType.images_zip:
         path = await convert_urls_to_zip_async(high_res_images, output_zip_path)
+        message = "IMAGES ZIP generated successfully."
     else:
         raise CustomAPIException(status_code=400, detail="Unsupported conversion type.")
 
     return {
         "success": True,
-        "message": "PDF generated successfully.",
+        "message": message,
         "slides_download_link": path,
     }

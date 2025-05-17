@@ -2,8 +2,7 @@ from fastapi import FastAPI,  Request, Query
 from fastapi.responses import JSONResponse
 from slide_share_dl import get_slides_pdf_download_link
 from exceptions import CustomAPIException
-from enum import Enum
-
+from utils import SlidesConversionType
 app = FastAPI()
 
 
@@ -18,10 +17,7 @@ async def custom_http_exception_handler(request: Request, exc: CustomAPIExceptio
         }
     )
 
-class ConversionType(str, Enum):
-    pdf = "PDF"
-    pptx = "PPTX"
-    images_zip = "IMAGES_ZIP"
+
 
 @app.get("/")
 def root():
@@ -31,7 +27,7 @@ def root():
 async def convert_slideshare_to_pdf(
     url: str = Query(..., description="Slideshare presentation URL"),
     resolution: int = Query(2048, description="Preferred image resolution"),
-    conversion_type: ConversionType = Query(..., description="Conversion type: PDF, PPTX, IMAGES_ZIP")
+    conversion_type: SlidesConversionType = Query(..., description="Conversion type: PDF, PPTX, IMAGES_ZIP")
 
 ):
     try:
