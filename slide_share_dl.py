@@ -6,7 +6,7 @@ from PIL import Image
 import requests
 from io import BytesIO
 
-from CustomAPIException import CustomAPIException
+from exceptions import CustomAPIException
 import httpx
 import asyncio
 

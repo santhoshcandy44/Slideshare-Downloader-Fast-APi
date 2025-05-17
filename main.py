@@ -1,7 +1,7 @@
 from fastapi import FastAPI,  Request, Query
 from fastapi.responses import JSONResponse
 from slide_share_dl import get_slides_pdf_download_link
-from CustomAPIException import CustomAPIException
+from exceptions import CustomAPIException
 from enum import Enum
 
 app = FastAPI()
