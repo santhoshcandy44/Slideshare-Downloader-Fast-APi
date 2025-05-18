@@ -25,6 +25,10 @@ def fetch_slide_images_all_resolutions(url):
         raise CustomAPIException(status_code=500, detail="Failed to fetch the presentation page.")
 
     soup = BeautifulSoup(response.text, "html.parser")
+
+    title_tag = soup.find("title")
+    page_title = title_tag.get_text(strip=True) if title_tag else None
+
     image_tags = soup.find_all("img", {"data-testid": "vertical-slide-image"})
 
     if not image_tags:
@@ -49,7 +53,10 @@ def fetch_slide_images_all_resolutions(url):
         if slide_resolutions:
             all_slide_images.append(slide_resolutions)
 
-    return all_slide_images
+    return {
+        "title": page_title,
+        "slides": all_slide_images
+    }
 
 
 
@@ -79,7 +86,10 @@ async def convert_urls_to_pdf_async(image_urls, output_pdf="slides.pdf"):
 
     first_image, *rest = images
     first_image.save(output_pdf, save_all=True, append_images=rest)
-    return output_pdf
+    file_size = os.path.getsize(output_pdf)
+
+    return output_pdf, file_size
+
 
 
 from pptx import Presentation
@@ -135,9 +145,11 @@ async def convert_urls_to_zip_async(image_urls, output_zip_path="slides.zip"):
 
     return output_zip_path
 
-from utils import SlidesConversionType
+from utils import SlidesConversionType, QualityType
 
-async  def get_slides_pdf_download_link(url: str, conversion_type:SlidesConversionType, quality: int = 2048):
+
+async  def get_slides_pdf_download_link(url: str, conversion_type:SlidesConversionType,
+                                        quality_type: QualityType = QualityType.hd):
     validate_url(url)
 
     path_parts = urlparse(url).path.strip("/").split("/")
@@ -146,16 +158,12 @@ async  def get_slides_pdf_download_link(url: str, conversion_type:SlidesConversi
     else:
         raise CustomAPIException(status_code=400, detail="Invalid SlideShare URL format.")
 
-    date_str = datetime.today().strftime("%d%m%Y")
+    fetch_slide_images_title = fetch_slide_images_all_resolutions(url)
 
-    output_dir = os.path.join("Slide_DL", date_str)
-    output_pdf_path = os.path.join(output_dir, f"{doc_short}.pdf")
-    output_pptx_path = os.path.join(output_dir, f"{doc_short}.pptx")
-    output_zip_path = os.path.join(output_dir, f"{doc_short}.zip")
+    slide_images = fetch_slide_images_title['slides']
+    title = fetch_slide_images_title['title']
 
-    os.makedirs(output_dir, exist_ok=True)
-
-    slide_images = fetch_slide_images_all_resolutions(url)
+    quality = 2048 if quality_type == QualityType.hd else 638
 
     high_res_images = [slide[quality] for slide in slide_images if quality in slide]
 
@@ -164,21 +172,36 @@ async  def get_slides_pdf_download_link(url: str, conversion_type:SlidesConversi
 
     thumbnail = high_res_images[0]
 
+    date_str = datetime.today().strftime("%d%m%Y")
+
+    output_dir = os.path.join("Slide_DL", date_str)
+    os.makedirs(output_dir, exist_ok=True)
+
     if conversion_type == SlidesConversionType.pdf:
-        path = await convert_urls_to_pdf_async(high_res_images, output_pdf_path)
+        output_pdf_path = os.path.join(output_dir, f"{doc_short}.pdf")
+        path, total_size = await convert_urls_to_pdf_async(high_res_images, output_pdf_path)
         message = "PDF generated successfully."
     elif conversion_type == SlidesConversionType.pptx:
-        path = await convert_urls_to_pptx_async(high_res_images, output_pptx_path)
+        output_pptx_path = os.path.join(output_dir, f"{doc_short}.pptx")
+        path, total_size = await convert_urls_to_pptx_async(high_res_images, output_pptx_path)
         message = "PPTX generated successfully."
     elif conversion_type == SlidesConversionType.images_zip:
-        path = await convert_urls_to_zip_async(high_res_images, output_zip_path)
+        output_zip_path = os.path.join(output_dir, f"{doc_short}.zip")
+        path, total_size = await convert_urls_to_zip_async(high_res_images, output_zip_path)
         message = "IMAGES ZIP generated successfully."
     else:
         raise CustomAPIException(status_code=400, detail="Unsupported conversion type.")
 
+    file_name = os.path.basename(path)
+
     return {
         "success": True,
-        "thumbnail":thumbnail,
         "message": message,
+        "thumbnail":thumbnail,
+        "quality":quality_type.value,
+        "conversion_type":conversion_type.value,
         "slides_download_link": path,
+        "file_name": file_name,
+        "size": total_size,
+        "title": title
     }

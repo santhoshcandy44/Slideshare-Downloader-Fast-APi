@@ -2,7 +2,7 @@ from fastapi import FastAPI,  Request, Query
 from fastapi.responses import JSONResponse
 from slide_share_dl import get_slides_pdf_download_link
 from exceptions import CustomAPIException
-from utils import SlidesConversionType
+from utils import SlidesConversionType, QualityType
 app = FastAPI()
 
 
@@ -26,14 +26,14 @@ def root():
 @app.get("/convert")
 async def convert_slideshare_to_pdf(
     url: str = Query(..., description="Slideshare presentation URL"),
-    resolution: int = Query(2048, description="Preferred image resolution"),
+    quality: QualityType = Query(QualityType.hd, description="Preferred image resolution"),
     conversion_type: SlidesConversionType = Query(..., description="Conversion type: PDF, PPTX, IMAGES_ZIP")
 
 ):
     try:
         if not url.strip():
             raise CustomAPIException(status_code=400, detail='Url can\'t be empty')
-        return await get_slides_pdf_download_link(url = url, conversion_type = conversion_type, quality = resolution)
+        return await get_slides_pdf_download_link(url = url, conversion_type = conversion_type, quality_type = quality)
     except Exception as e:
         if isinstance(e, CustomAPIException):
             raise  e
