@@ -24,20 +24,21 @@ async def custom_http_exception_handler(request: Request, exc: CustomAPIExceptio
 
 @app.get("/")
 def root():
-    ftp_host = "82.25.120.208"
-    ftp_user = "u979883547.admin"
-    ftp_pass = "a*58cSG%x5Y4*Tn62e&zp7pT"
-    ftp_port = 21  # FTP port
-
-    ftp = FTP()
-    ftp.set_pasv(True)
-    ftp.connect(host=ftp_host, port=ftp_port)
-    ftp.login(user=ftp_user, passwd=ftp_pass)
-
-    print("✅ Connected to Hostinger FTP")
-    files = ftp.nlst()
-    print("📄 Files:", files)
-    ftp.quit()
+    #Testing
+    # ftp_host = "82.25.120.208"
+    # ftp_user = "u979883547.admin"
+    # ftp_pass = "a*58cSG%x5Y4*Tn62e&zp7pT"
+    # ftp_port = 21  # FTP port
+    #
+    # ftp = FTP()
+    # ftp.set_pasv(True)
+    # ftp.connect(host=ftp_host, port=ftp_port)
+    # ftp.login(user=ftp_user, passwd=ftp_pass)
+    #
+    # print("✅ Connected to Hostinger FTP")
+    # files = ftp.nlst()
+    # print("📄 Files:", files)
+    # ftp.quit()
     return {"message": "API entry"}
 
 @app.get("/convert")

@@ -109,7 +109,7 @@ async def convert_urls_to_pdf_async(image_urls, pdf_filename):
         ftp_port = int(os.getenv("FTP_PORT", 21))
 
         ftp = FTP()
-        ftp.set_pasv(False)
+        ftp.set_pasv(True)
         ftp.connect(host=ftp_host, port=ftp_port)
         ftp.login(user=ftp_user, passwd=ftp_pass)
 
@@ -180,7 +180,7 @@ async def convert_urls_to_pptx_async(image_urls, pptx_filename):
         ftp_port = int(os.getenv("FTP_PORT", 21))
 
         ftp = FTP()
-        ftp.set_pasv(False)
+        ftp.set_pasv(True)
         ftp.connect(host=ftp_host, port=ftp_port)
         ftp.login(user=ftp_user, passwd=ftp_pass)
 
@@ -236,7 +236,7 @@ async def convert_urls_to_zip_async(image_urls, zip_filename):
         ftp_port = int(os.getenv("FTP_PORT", 21))
 
         ftp = FTP()
-        ftp.set_pasv(False)
+        ftp.set_pasv(True)
         ftp.connect(host=ftp_host, port=ftp_port)
         ftp.login(user=ftp_user, passwd=ftp_pass)
 
