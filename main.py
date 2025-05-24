@@ -52,5 +52,5 @@ async def convert_slideshare_to_pdf(
     except Exception as e:
         if isinstance(e, CustomAPIException):
             raise  e
-        print(e)
+        raise e
         return {"success":False, 'error':True, 'detail': 'Something went wrong' }
