@@ -1,4 +1,6 @@
+import json
 import os
+import tempfile
 from datetime import datetime
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse
@@ -9,7 +11,9 @@ from io import BytesIO
 from exceptions import CustomAPIException
 import httpx
 import asyncio
+from dotenv import load_dotenv
 
+load_dotenv()
 
 
 def validate_url(url):
@@ -59,7 +63,6 @@ def fetch_slide_images_all_resolutions(url):
     }
 
 
-
 async def fetch_image(client: httpx.AsyncClient, url: str):
     try:
         response = await client.get(url)
@@ -69,9 +72,12 @@ async def fetch_image(client: httpx.AsyncClient, url: str):
     except Exception as e:
         raise CustomAPIException(status_code=500, detail=f"Failed to fetch image: {url}, Error: {str(e)}")
 
-async def convert_urls_to_pdf_async(image_urls, output_pdf="slides.pdf"):
+
+
+async def convert_urls_to_pdf_async(image_urls, pdf_filename):
     images = []
 
+    # Download images asynchronously
     async with httpx.AsyncClient(timeout=20) as client:
         tasks = [fetch_image(client, url) for url in image_urls]
         results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -79,77 +85,190 @@ async def convert_urls_to_pdf_async(image_urls, output_pdf="slides.pdf"):
         for result in results:
             if isinstance(result, Exception):
                 raise result
-            images.append(result)
+            images.append(result.convert("RGB"))  # Ensure all images are RGB for PDF
 
     if not images:
         raise CustomAPIException(status_code=500, detail="No images to convert to PDF.")
 
-    first_image, *rest = images
-    first_image.save(output_pdf, save_all=True, append_images=rest)
-    file_size = os.path.getsize(output_pdf)
+    # Create temporary file
+    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp_pdf:
+        pdf_path = tmp_pdf.name
 
-    return output_pdf, file_size
+    try:
+        # Save PDF to file
+        first_image, *rest = images
+        first_image.save(pdf_path, format='PDF', save_all=True, append_images=rest)
+
+        # FTP setup
+        date_str = datetime.today().strftime("%d%m%Y")
+        ftp_dir = f"SS_DL/{date_str}"
+
+        ftp_host = os.getenv("FTP_HOST")
+        ftp_user = os.getenv("FTP_USER")
+        ftp_pass = os.getenv("FTP_PASS")
+        ftp_port = int(os.getenv("FTP_PORT", 21))
+
+        ftp = FTP()
+        ftp.set_pasv(False)
+        ftp.connect(host=ftp_host, port=ftp_port)
+        ftp.login(user=ftp_user, passwd=ftp_pass)
+
+        # Ensure directory exists
+        for folder in ftp_dir.split('/'):
+            try:
+                ftp.cwd(folder)
+            except:
+                ftp.mkd(folder)
+                ftp.cwd(folder)
+
+        # Upload file
+        with open(pdf_path, 'rb') as file_to_upload:
+            ftp.storbinary(f'STOR {pdf_filename}', file_to_upload, blocksize=1048576)
+
+        ftp.quit()
+
+        file_size = os.path.getsize(pdf_path)
+        return f"{ftp_dir}/{pdf_filename}", file_size
+
+    finally:
+        os.remove(pdf_path)
 
 
-
+from io import BytesIO
 from pptx import Presentation
 from pptx.util import Inches
+import httpx, os, asyncio
+from datetime import datetime
 
 
-async def convert_urls_to_pptx_async(image_urls, output_pptx="slides.pptx"):
+async def convert_urls_to_pptx_async(image_urls, pptx_filename):
     prs = Presentation()
-    blank_slide_layout = prs.slide_layouts[6]  # No title/content
+    blank_slide_layout = prs.slide_layouts[6]
 
     async with httpx.AsyncClient(timeout=20) as client:
         tasks = [fetch_image(client, url) for url in image_urls]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
-        for result in results:
-            if isinstance(result, Exception):
-                raise result
+    for result in results:
+        if isinstance(result, Exception):
+            raise result
 
-            img_byte_arr = BytesIO()
-            result.convert("RGB").save(img_byte_arr, format='JPEG')
-            img_byte_arr.seek(0)
+        img_byte_arr = BytesIO()
+        result.convert("RGB").save(img_byte_arr, format='JPEG')
+        img_byte_arr.seek(0)
 
-            slide = prs.slides.add_slide(blank_slide_layout)
-            slide.shapes.add_picture(img_byte_arr, Inches(0), Inches(0),
-                                     width=prs.slide_width, height=prs.slide_height)
+        slide = prs.slides.add_slide(blank_slide_layout)
+        slide.shapes.add_picture(
+            img_byte_arr, Inches(0), Inches(0),
+            width=prs.slide_width, height=prs.slide_height
+        )
 
-    prs.save(output_pptx)
-    return output_pptx
+    # Save to a temporary file
+    with tempfile.NamedTemporaryFile(suffix=".pptx", delete=False) as tmp_pptx_file:
+        pptx_path = tmp_pptx_file.name
+
+    try:
+        prs.save(pptx_path)
+
+        # FTP upload
+        date_str = datetime.today().strftime("%d%m%Y")
+        ftp_dir = f"SS_DL/{date_str}"
+
+        ftp_host = os.getenv("FTP_HOST")
+        ftp_user = os.getenv("FTP_USER")
+        ftp_pass = os.getenv("FTP_PASS")
+        ftp_port = int(os.getenv("FTP_PORT", 21))
+
+        ftp = FTP()
+        ftp.set_pasv(False)
+        ftp.connect(host=ftp_host, port=ftp_port)
+        ftp.login(user=ftp_user, passwd=ftp_pass)
+
+        for folder in ftp_dir.split('/'):
+            try:
+                ftp.cwd(folder)
+            except:
+                ftp.mkd(folder)
+                ftp.cwd(folder)
+
+        with open(pptx_path, 'rb') as file_to_upload:
+            ftp.storbinary(f'STOR {pptx_filename}', file_to_upload,  blocksize=1048576)
+
+        ftp.quit()
+
+        file_size = os.path.getsize(pptx_path)
+        return f"{ftp_dir}/{pptx_filename}", file_size
+
+    finally:
+        os.remove(pptx_path)
 
 
 import zipfile
 
-
-async def convert_urls_to_zip_async(image_urls, output_zip_path="slides.zip"):
+async def convert_urls_to_zip_async(image_urls, zip_filename):
     async with httpx.AsyncClient(timeout=20) as client:
         tasks = [fetch_image(client, url) for url in image_urls]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
-    memory_zip = BytesIO()
+    # Create a temporary file for the zip
+    with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as tmp_zip_file:
+        zip_path = tmp_zip_file.name
 
-    with zipfile.ZipFile(memory_zip, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
-        for idx, result in enumerate(results):
-            if isinstance(result, Exception):
-                raise result
+    try:
+        # Write to the temp zip file
+        with zipfile.ZipFile(zip_path, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
+            for idx, result in enumerate(results):
+                if isinstance(result, Exception):
+                    raise result
 
-            img_byte_arr = BytesIO()
-            result.convert("RGB").save(img_byte_arr, format='JPEG')
-            img_byte_arr.seek(0)
-            zf.writestr(f"slide_{idx}.jpg", img_byte_arr.read())
+                img_byte_arr = BytesIO()
+                result.convert("RGB").save(img_byte_arr, format='JPEG')
+                img_byte_arr.seek(0)
+                zf.writestr(f"image_{idx+1}.jpg", img_byte_arr.read())
 
-    with open(output_zip_path, "wb") as f:
-        f.write(memory_zip.getvalue())
+        # Setup FTP
+        date_str = datetime.today().strftime("%d%m%Y")
+        ftp_dir = f"SS_DL/{date_str}"
 
-    return output_zip_path
+        ftp_host = os.getenv("FTP_HOST")
+        ftp_user = os.getenv("FTP_USER")
+        ftp_pass = os.getenv("FTP_PASS")
+        ftp_port = int(os.getenv("FTP_PORT", 21))
+
+        ftp = FTP()
+        ftp.set_pasv(False)
+        ftp.connect(host=ftp_host, port=ftp_port)
+        ftp.login(user=ftp_user, passwd=ftp_pass)
+
+        for folder in ftp_dir.split('/'):
+            try:
+                ftp.cwd(folder)
+            except:
+                ftp.mkd(folder)
+                ftp.cwd(folder)
+
+        # Upload from temp file
+        with open(zip_path, 'rb') as file_to_upload:
+            ftp.storbinary(f'STOR {zip_filename}', file_to_upload,  blocksize=1048576)
+
+        ftp.quit()
+
+        # Get final file size before deleting
+        file_size = os.path.getsize(zip_path)
+
+        return f"{ftp_dir}/{zip_filename}", file_size
+
+    finally:
+        # Always delete temp file
+        os.remove(zip_path)
+
 
 from utils import SlidesConversionType, QualityType
+from ftplib import FTP
 
 
-async  def get_slides_pdf_download_link(url: str, conversion_type:SlidesConversionType,
-                                        quality_type: QualityType = QualityType.hd):
+async def get_slides_download_link(url: str, conversion_type: SlidesConversionType,
+                                   quality_type: QualityType = QualityType.hd):
     validate_url(url)
 
     path_parts = urlparse(url).path.strip("/").split("/")
@@ -172,36 +291,33 @@ async  def get_slides_pdf_download_link(url: str, conversion_type:SlidesConversi
 
     thumbnail = high_res_images[0]
 
-    date_str = datetime.today().strftime("%d%m%Y")
-
-    output_dir = os.path.join("Slide_DL", date_str)
-    os.makedirs(output_dir, exist_ok=True)
-
     if conversion_type == SlidesConversionType.pdf:
-        output_pdf_path = os.path.join(output_dir, f"{doc_short}.pdf")
-        path, total_size = await convert_urls_to_pdf_async(high_res_images, output_pdf_path)
+        path, total_size = await convert_urls_to_pdf_async(high_res_images, f"{doc_short}.pdf")
         message = "PDF generated successfully."
     elif conversion_type == SlidesConversionType.pptx:
-        output_pptx_path = os.path.join(output_dir, f"{doc_short}.pptx")
-        path, total_size = await convert_urls_to_pptx_async(high_res_images, output_pptx_path)
+        path, total_size = await convert_urls_to_pptx_async(high_res_images, f"{doc_short}.pptx")
         message = "PPTX generated successfully."
     elif conversion_type == SlidesConversionType.images_zip:
-        output_zip_path = os.path.join(output_dir, f"{doc_short}.zip")
-        path, total_size = await convert_urls_to_zip_async(high_res_images, output_zip_path)
+        path, total_size = await convert_urls_to_zip_async(high_res_images, f"{doc_short}.zip")
         message = "IMAGES ZIP generated successfully."
     else:
         raise CustomAPIException(status_code=400, detail="Unsupported conversion type.")
 
     file_name = os.path.basename(path)
 
+    base_url = os.getenv("BASE_URL", 21)
+
     return {
         "success": True,
         "message": message,
-        "thumbnail":thumbnail,
-        "quality":quality_type.value,
-        "conversion_type":conversion_type.value,
-        "slides_download_link": path,
-        "file_name": file_name,
-        "size": total_size,
-        "title": title
+        "data": json.dumps({
+            "thumbnail": thumbnail,
+            "quality": quality_type.value,
+            "conversion_type": conversion_type.value,
+            "slides_download_link": f'{base_url}/{path}',
+            "file_name": file_name,
+            "size": total_size,
+            "title": title
+        })
+
     }
