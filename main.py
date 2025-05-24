@@ -30,7 +30,7 @@ def root():
     ftp_port = 21  # FTP port
 
     ftp = FTP()
-    ftp.set_pasv(False)
+    ftp.set_pasv(True)
     ftp.connect(host=ftp_host, port=ftp_port)
     ftp.login(user=ftp_user, passwd=ftp_pass)
 
