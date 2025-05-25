@@ -168,7 +168,6 @@ async def convert_urls_to_pdf_async(image_urls, pdf_filename):
         os.remove(pdf_path)
 
 
-
 def convert_image_paths_to_pdf(image_paths, pdf_path):
     try:
         with open(pdf_path, "wb") as f:
@@ -268,16 +267,21 @@ async def convert_urls_to_zip_async(image_urls, zip_filename):
         zip_path = tmp_zip_file.name
 
     try:
-        # Write to the temp zip file
         with zipfile.ZipFile(zip_path, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
             for idx, result in enumerate(results):
                 if isinstance(result, Exception):
                     raise result
-
-                img_byte_arr = BytesIO()
-                result.convert("RGB").save(img_byte_arr, format='JPEG')
-                img_byte_arr.seek(0)
-                zf.writestr(f"image_{idx+1}.jpg", img_byte_arr.read())
+                try:
+                    with open(result, "rb") as img_file:
+                        zf.writestr(f"image_{idx + 1}.jpg", img_file.read())
+                except Exception as e:
+                    raise CustomAPIException(status_code=500, detail=str(e))
+                finally:
+                    # Delete the temp file after it’s written to zip
+                    try:
+                        os.remove(result)
+                    except Exception as cleanup_err:
+                        print(f"Failed to delete temp image: {result}, error: {cleanup_err}")
 
         # Setup FTP
         date_str = datetime.today().strftime("%d%m%Y")
