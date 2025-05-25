@@ -202,15 +202,17 @@ async def convert_urls_to_pptx_async(image_urls, pptx_filename):
         if isinstance(result, Exception):
             raise result
 
-        img_byte_arr = BytesIO()
-        result.convert("RGB").save(img_byte_arr, format='JPEG')
-        img_byte_arr.seek(0)
-
         slide = prs.slides.add_slide(blank_slide_layout)
         slide.shapes.add_picture(
-            img_byte_arr, Inches(0), Inches(0),
+            result, Inches(0), Inches(0),
             width=prs.slide_width, height=prs.slide_height
         )
+
+    for result in results:
+        try:
+            os.remove(result)
+        except Exception as e:
+            print(f"Failed to delete temp file: {result}, error: {e}")
 
     # Save to a temporary file
     with tempfile.NamedTemporaryFile(suffix=".pptx", delete=False) as tmp_pptx_file:
@@ -276,7 +278,6 @@ async def convert_urls_to_zip_async(image_urls, zip_filename):
                 finally:
                     # Delete the temp file after it’s written to zip
                     try:
-                        print(f"Removed {result}")
                         os.remove(result)
                     except Exception as cleanup_err:
                         print(f"Failed to delete temp image: {result}, error: {cleanup_err}")
