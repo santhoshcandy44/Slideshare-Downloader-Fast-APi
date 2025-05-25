@@ -177,19 +177,7 @@ def convert_urls_to_pdf_sync(image_urls, pdf_filename):
     images = []
 
 
-    return {
-        "success": True,
-        "data": json.dumps({
-            "thumbnail": "",
-            "quality": "",
-            "conversion_type": "",
-            "slides_download_link": "",
-            "file_name": "",
-            "size": 1024,
-            "title": "as"
-        })
 
-    }
 
     # Download images one-by-one
     with httpx.Client(timeout=20) as client:
@@ -204,6 +192,20 @@ def convert_urls_to_pdf_sync(image_urls, pdf_filename):
         raise CustomAPIException(status_code=500, detail="No images to convert to PDF.")
 
     print('Images fetched')
+
+    return {
+        "success": True,
+        "data": json.dumps({
+            "thumbnail": "",
+            "quality": "",
+            "conversion_type": "",
+            "slides_download_link": "",
+            "file_name": "",
+            "size": 1024,
+            "title": "as"
+        })
+
+    }
 
     # # Create temporary file
     # with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp_pdf:
