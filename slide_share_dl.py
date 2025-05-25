@@ -387,6 +387,17 @@ async def get_slides_download_link(url: str, conversion_type: SlidesConversionTy
     title = fetch_slide_images_title['title']
 
 
+
+    quality = 2048 if quality_type == QualityType.hd else 638
+
+    high_res_images = [slide[quality] for slide in slide_images if quality in slide]
+
+    if not high_res_images:
+        raise CustomAPIException(status_code=404, detail=f"No {quality}px resolution slides found.")
+
+    thumbnail = high_res_images[0]
+
+
     return {
         "success": True,
         "data": json.dumps({
@@ -401,14 +412,6 @@ async def get_slides_download_link(url: str, conversion_type: SlidesConversionTy
 
     }
 
-    quality = 2048 if quality_type == QualityType.hd else 638
-
-    high_res_images = [slide[quality] for slide in slide_images if quality in slide]
-
-    if not high_res_images:
-        raise CustomAPIException(status_code=404, detail=f"No {quality}px resolution slides found.")
-
-    thumbnail = high_res_images[0]
 
     if conversion_type == SlidesConversionType.pdf:
         path, total_size = convert_urls_to_pdf_sync(high_res_images, f"{doc_short}.pdf")
