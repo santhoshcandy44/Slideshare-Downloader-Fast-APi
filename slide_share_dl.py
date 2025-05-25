@@ -91,9 +91,6 @@ async def fetch_image(client: httpx.AsyncClient, url: str):
 import tempfile
 
 
-
-
-
 semaphore = asyncio.Semaphore(10)
 
 async def fetch_with_limit(client, url):
@@ -279,6 +276,7 @@ async def convert_urls_to_zip_async(image_urls, zip_filename):
                 finally:
                     # Delete the temp file after it’s written to zip
                     try:
+                        print(f"Removed {result}")
                         os.remove(result)
                     except Exception as cleanup_err:
                         print(f"Failed to delete temp image: {result}, error: {cleanup_err}")
