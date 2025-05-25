@@ -186,6 +186,15 @@ def convert_image_paths_to_pdf(image_paths, pdf_path):
             f.write(img2pdf.convert(image_paths))
     except Exception as e:
         raise CustomAPIException(status_code=500, detail=str(e))
+    finally:
+        # Clean up temp image files
+        for path in image_paths:
+            try:
+                os.remove(path)
+                print(f"Removed {path}")
+            except Exception as cleanup_err:
+                print(f"Failed to delete temp file: {path}. Error: {cleanup_err}")
+
 
 def convert_urls_to_pdf_sync(image_urls, pdf_filename):
     print('Sync started')
@@ -255,6 +264,7 @@ def convert_urls_to_pdf_sync(image_urls, pdf_filename):
 
     finally:
         os.remove(pdf_path)
+        print(f"Removed pdf {pdf_path}")
 
 
 from io import BytesIO
