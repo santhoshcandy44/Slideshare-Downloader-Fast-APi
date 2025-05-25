@@ -78,32 +78,109 @@ async def fetch_image(client: httpx.AsyncClient, url: str):
         raise CustomAPIException(status_code=500, detail=f"Failed to fetch image: {url}, Error: {str(e)}")
 
 
+
+def fetch_image_sync(client: httpx.Client, url: str):
+    try:
+        response = client.get(url)
+        print(f'Image response fetched {url}')
+        response.raise_for_status()
+        img = Image.open(BytesIO(response.content)).convert("RGB")
+        print(f'Image opened {url}')
+        return img
+    except Exception as e:
+        raise CustomAPIException(status_code=500, detail=f"Failed to fetch image: {url}, Error: {str(e)}")
+
 semaphore = asyncio.Semaphore(10)
 
 async def fetch_with_limit(client, url):
     async with semaphore:
         return await fetch_image(client, url)
 
-async def convert_urls_to_pdf_async(image_urls, pdf_filename):
+# async def convert_urls_to_pdf_async(image_urls, pdf_filename):
+#
+#     print('Async started')
+#
+#     images = []
+#
+#     # Download images asynchronously
+#     async with httpx.AsyncClient(timeout=20) as client:
+#         tasks = [fetch_with_limit(client, url) for url in image_urls]
+#         results = await asyncio.gather(*tasks, return_exceptions=True)
+#
+#         for result in results:
+#             if isinstance(result, Exception):
+#                 raise result
+#             images.append(result.convert("RGB"))  # Ensure all images are RGB for PDF
+#
+#     if not images:
+#         raise CustomAPIException(status_code=500, detail="No images to convert to PDF.")
+#
+#     print('Async images gathered')
+#
+#     # Create temporary file
+#     with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp_pdf:
+#         pdf_path = tmp_pdf.name
+#
+#     try:
+#         # Save PDF to file
+#         first_image, *rest = images
+#         first_image.save(pdf_path, format='PDF', save_all=True, append_images=rest)
+#
+#         # FTP setup
+#         date_str = datetime.today().strftime("%d%m%Y")
+#         ftp_dir = f"SS_DL/{date_str}"
+#
+#         ftp_host = os.getenv("FTP_HOST")
+#         ftp_user = os.getenv("FTP_USER")
+#         ftp_pass = os.getenv("FTP_PASS")
+#         ftp_port = int(os.getenv("FTP_PORT", 21))
+#
+#         ftp = FTP()
+#         ftp.set_pasv(True)
+#         ftp.connect(host=ftp_host, port=ftp_port)
+#         ftp.login(user=ftp_user, passwd=ftp_pass)
+#         print("Connected FTP")
+#         # Ensure directory exists
+#         for folder in ftp_dir.split('/'):
+#             try:
+#                 ftp.cwd(folder)
+#             except:
+#                 ftp.mkd(folder)
+#                 ftp.cwd(folder)
+#
+#         # Upload file
+#         with open(pdf_path, 'rb') as file_to_upload:
+#             ftp.storbinary(f'STOR {pdf_filename}', file_to_upload, blocksize=1048576)
+#
+#         ftp.quit()
+#         print("File written in FTP")
+#
+#         file_size = os.path.getsize(pdf_path)
+#         return f"{ftp_dir}/{pdf_filename}", file_size
+#
+#     finally:
+#         os.remove(pdf_path)
 
-    print('Async started')
+
+
+def convert_urls_to_pdf_sync(image_urls, pdf_filename):
+    print('Sync started')
 
     images = []
 
-    # Download images asynchronously
-    async with httpx.AsyncClient(timeout=20) as client:
-        tasks = [fetch_with_limit(client, url) for url in image_urls]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-
-        for result in results:
-            if isinstance(result, Exception):
-                raise result
-            images.append(result.convert("RGB"))  # Ensure all images are RGB for PDF
+    # Download images one-by-one
+    with httpx.Client(timeout=20) as client:
+        for url in image_urls:
+            try:
+                img = fetch_image_sync(client, url)
+                images.append(img.convert("RGB"))
+            except Exception as e:
+                raise CustomAPIException(status_code=500, detail=str(e))
 
     if not images:
         raise CustomAPIException(status_code=500, detail="No images to convert to PDF.")
 
-    print('Async images gathered')
+    print('Images fetched')
 
     # Create temporary file
     with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp_pdf:
@@ -128,6 +205,7 @@ async def convert_urls_to_pdf_async(image_urls, pdf_filename):
         ftp.connect(host=ftp_host, port=ftp_port)
         ftp.login(user=ftp_user, passwd=ftp_pass)
         print("Connected FTP")
+
         # Ensure directory exists
         for folder in ftp_dir.split('/'):
             try:
@@ -308,7 +386,7 @@ async def get_slides_download_link(url: str, conversion_type: SlidesConversionTy
     thumbnail = high_res_images[0]
 
     if conversion_type == SlidesConversionType.pdf:
-        path, total_size = await convert_urls_to_pdf_async(high_res_images, f"{doc_short}.pdf")
+        path, total_size = convert_urls_to_pdf_sync(high_res_images, f"{doc_short}.pdf")
         message = "PDF generated successfully."
     elif conversion_type == SlidesConversionType.pptx:
         path, total_size = await convert_urls_to_pptx_async(high_res_images, f"{doc_short}.pptx")
