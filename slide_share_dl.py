@@ -216,7 +216,7 @@ def convert_urls_to_pdf_sync(image_urls, pdf_filename):
 
         # Upload file
         with open(pdf_path, 'rb') as file_to_upload:
-            ftp.storbinary(f'STOR {pdf_filename}', file_to_upload, blocksize=1048576)
+            ftp.storbinary(f'STOR {pdf_filename}', file_to_upload)
 
         ftp.quit()
         print("File written in FTP")
