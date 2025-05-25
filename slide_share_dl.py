@@ -83,22 +83,27 @@ import tempfile
 
 
 
-def fetch_image_sync(client: httpx.Client, url: str):
+def fetch_image_sync(client: httpx.Client, url: str) -> str:
     try:
         response = client.get(url)
         print(f'Image response fetched {url}')
         response.raise_for_status()
 
-        # Open image from temp file
         img = Image.open(BytesIO(response.content)).convert("RGB")
+        print(f'Image opened {url}')
 
-        print(f'Image opened from temp file: {url}')
-        return img
+        # Save image to temp file
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg")
+        img.save(temp_file.name, format="JPEG")
+        temp_file.close()  # Close so other processes can access it
+
+        return temp_file.name  # Return the path to the temp file
 
     except Exception as e:
-        raise CustomAPIException(status_code=500, detail=f"Failed to fetch image: {url}, Error: {str(e)}")
-
-
+        raise CustomAPIException(
+            status_code=500,
+            detail=f"Failed to fetch image: {url}, Error: {str(e)}"
+        )
 
 
 semaphore = asyncio.Semaphore(10)
@@ -190,6 +195,8 @@ def convert_urls_to_pdf_sync(image_urls, pdf_filename):
 
     if not images:
         raise CustomAPIException(status_code=500, detail="No images to convert to PDF.")
+
+    print(images)
 
     print('Images fetched')
 
