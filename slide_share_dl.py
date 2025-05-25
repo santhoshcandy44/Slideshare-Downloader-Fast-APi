@@ -386,6 +386,21 @@ async def get_slides_download_link(url: str, conversion_type: SlidesConversionTy
     slide_images = fetch_slide_images_title['slides']
     title = fetch_slide_images_title['title']
 
+
+    return {
+        "success": True,
+        "data": json.dumps({
+            "thumbnail": "",
+            "quality": quality_type.value,
+            "conversion_type": conversion_type.value,
+            "slides_download_link": "",
+            "file_name": "",
+            "size": 1024,
+            "title": title
+        })
+
+    }
+
     quality = 2048 if quality_type == QualityType.hd else 638
 
     high_res_images = [slide[quality] for slide in slide_images if quality in slide]
