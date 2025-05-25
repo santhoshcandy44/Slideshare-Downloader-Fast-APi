@@ -79,14 +79,30 @@ async def fetch_image(client: httpx.AsyncClient, url: str):
 
 
 
+import tempfile
+
+
+
 def fetch_image_sync(client: httpx.Client, url: str):
     try:
         response = client.get(url)
         print(f'Image response fetched {url}')
         response.raise_for_status()
-        img = Image.open(BytesIO(response.content)).convert("RGB")
-        print(f'Image opened {url}')
+
+        # Write image to a temporary file
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp_file:
+            tmp_file.write(response.content)
+            tmp_file_path = tmp_file.name
+
+        # Open image from temp file
+        img = Image.open(tmp_file_path).convert("RGB")
+
+        # Optionally delete temp file after loading
+        os.remove(tmp_file_path)
+
+        print(f'Image opened from temp file: {url}')
         return img
+
     except Exception as e:
         raise CustomAPIException(status_code=500, detail=f"Failed to fetch image: {url}, Error: {str(e)}")
 
