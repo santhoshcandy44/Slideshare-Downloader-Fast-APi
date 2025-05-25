@@ -39,6 +39,7 @@ def fetch_slide_images_all_resolutions(url):
         raise CustomAPIException(status_code=404, detail="No slide images found.")
 
     all_slide_images = []
+    print("Beautiful soup processing")
     for tag in image_tags:
         srcset = tag.get("srcset")
         if not srcset:
@@ -57,6 +58,8 @@ def fetch_slide_images_all_resolutions(url):
         if slide_resolutions:
             all_slide_images.append(slide_resolutions)
 
+    print("Beautiful soup generated images")
+
     return {
         "title": page_title,
         "slides": all_slide_images
@@ -66,8 +69,10 @@ def fetch_slide_images_all_resolutions(url):
 async def fetch_image(client: httpx.AsyncClient, url: str):
     try:
         response = await client.get(url)
+        print(f'Image response fetched {url}')
         response.raise_for_status()
         img = Image.open(BytesIO(response.content)).convert("RGB")
+        print(f'Image opened {url}')
         return img
     except Exception as e:
         raise CustomAPIException(status_code=500, detail=f"Failed to fetch image: {url}, Error: {str(e)}")
@@ -80,6 +85,9 @@ async def fetch_with_limit(client, url):
         return await fetch_image(client, url)
 
 async def convert_urls_to_pdf_async(image_urls, pdf_filename):
+
+    print('Async started')
+
     images = []
 
     # Download images asynchronously
@@ -94,6 +102,8 @@ async def convert_urls_to_pdf_async(image_urls, pdf_filename):
 
     if not images:
         raise CustomAPIException(status_code=500, detail="No images to convert to PDF.")
+
+    print('Async images gathered')
 
     # Create temporary file
     with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp_pdf:
@@ -117,7 +127,7 @@ async def convert_urls_to_pdf_async(image_urls, pdf_filename):
         ftp.set_pasv(True)
         ftp.connect(host=ftp_host, port=ftp_port)
         ftp.login(user=ftp_user, passwd=ftp_pass)
-
+        print("Connected FTP")
         # Ensure directory exists
         for folder in ftp_dir.split('/'):
             try:
@@ -131,6 +141,7 @@ async def convert_urls_to_pdf_async(image_urls, pdf_filename):
             ftp.storbinary(f'STOR {pdf_filename}', file_to_upload, blocksize=1048576)
 
         ftp.quit()
+        print("File written in FTP")
 
         file_size = os.path.getsize(pdf_path)
         return f"{ftp_dir}/{pdf_filename}", file_size
