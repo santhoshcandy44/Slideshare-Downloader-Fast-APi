@@ -184,7 +184,7 @@ def convert_urls_to_pdf_sync(image_urls, pdf_filename):
         for url in image_urls:
             try:
                 img = fetch_image_sync(client, url)
-                images.append(img)
+                # images.append(img)
             except Exception as e:
                 raise CustomAPIException(status_code=500, detail=str(e))
 
