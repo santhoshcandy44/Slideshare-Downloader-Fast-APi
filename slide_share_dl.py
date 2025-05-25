@@ -89,16 +89,8 @@ def fetch_image_sync(client: httpx.Client, url: str):
         print(f'Image response fetched {url}')
         response.raise_for_status()
 
-        # Write image to a temporary file
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp_file:
-            tmp_file.write(response.content)
-            tmp_file_path = tmp_file.name
-
         # Open image from temp file
-        img = Image.open(tmp_file_path).convert("RGB")
-
-        # Optionally delete temp file after loading
-        os.remove(tmp_file_path)
+        img = Image.open(BytesIO(response.content)).convert("RGB")
 
         print(f'Image opened from temp file: {url}')
         return img
@@ -198,50 +190,52 @@ def convert_urls_to_pdf_sync(image_urls, pdf_filename):
 
     print('Images fetched')
 
-    # Create temporary file
-    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp_pdf:
-        pdf_path = tmp_pdf.name
+    # # Create temporary file
+    # with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp_pdf:
+    #     pdf_path = tmp_pdf.name
 
-    try:
-        # Save PDF to file
-        first_image, *rest = images
-        first_image.save(pdf_path, format='PDF', save_all=True, append_images=rest)
+    return "/sdf/ass.pdf", 1024
 
-        # FTP setup
-        date_str = datetime.today().strftime("%d%m%Y")
-        ftp_dir = f"SS_DL/{date_str}"
+    # try:
+        # # Save PDF to file
+        # first_image, *rest = images
+        # first_image.save(pdf_path, format='PDF', save_all=True, append_images=rest)
+        #
+        # # FTP setup
+        # date_str = datetime.today().strftime("%d%m%Y")
+        # ftp_dir = f"SS_DL/{date_str}"
+        #
+        # ftp_host = os.getenv("FTP_HOST")
+        # ftp_user = os.getenv("FTP_USER")
+        # ftp_pass = os.getenv("FTP_PASS")
+        # ftp_port = int(os.getenv("FTP_PORT", 21))
+        #
+        # ftp = FTP()
+        # ftp.set_pasv(True)
+        # ftp.connect(host=ftp_host, port=ftp_port)
+        # ftp.login(user=ftp_user, passwd=ftp_pass)
+        # print("Connected FTP")
+        #
+        # # Ensure directory exists
+        # for folder in ftp_dir.split('/'):
+        #     try:
+        #         ftp.cwd(folder)
+        #     except:
+        #         ftp.mkd(folder)
+        #         ftp.cwd(folder)
+        #
+        # # Upload file
+        # with open(pdf_path, 'rb') as file_to_upload:
+        #     ftp.storbinary(f'STOR {pdf_filename}', file_to_upload)
+        #
+        # ftp.quit()
+        # print("File written in FTP")
+        #
+        # file_size = os.path.getsize(pdf_path)
+        # return f"{ftp_dir}/{pdf_filename}", file_size
 
-        ftp_host = os.getenv("FTP_HOST")
-        ftp_user = os.getenv("FTP_USER")
-        ftp_pass = os.getenv("FTP_PASS")
-        ftp_port = int(os.getenv("FTP_PORT", 21))
-
-        ftp = FTP()
-        ftp.set_pasv(True)
-        ftp.connect(host=ftp_host, port=ftp_port)
-        ftp.login(user=ftp_user, passwd=ftp_pass)
-        print("Connected FTP")
-
-        # Ensure directory exists
-        for folder in ftp_dir.split('/'):
-            try:
-                ftp.cwd(folder)
-            except:
-                ftp.mkd(folder)
-                ftp.cwd(folder)
-
-        # Upload file
-        with open(pdf_path, 'rb') as file_to_upload:
-            ftp.storbinary(f'STOR {pdf_filename}', file_to_upload)
-
-        ftp.quit()
-        print("File written in FTP")
-
-        file_size = os.path.getsize(pdf_path)
-        return f"{ftp_dir}/{pdf_filename}", file_size
-
-    finally:
-        os.remove(pdf_path)
+    # finally:
+    #     os.remove(pdf_path)
 
 
 from io import BytesIO
