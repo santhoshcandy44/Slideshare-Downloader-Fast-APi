@@ -183,8 +183,9 @@ def convert_urls_to_pdf_sync(image_urls, pdf_filename):
     with httpx.Client(timeout=20) as client:
         for url in image_urls:
             try:
-                img = fetch_image_sync(client, url)
-                images.append(img.convert("RGB"))
+                urlX = url
+                # img = fetch_image_sync(client, url)
+                # images.append(img.convert("RGB"))
             except Exception as e:
                 raise CustomAPIException(status_code=500, detail=str(e))
 
