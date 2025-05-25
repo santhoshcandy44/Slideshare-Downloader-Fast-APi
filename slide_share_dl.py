@@ -98,6 +98,9 @@ def fetch_image_sync(client: httpx.Client, url: str):
     except Exception as e:
         raise CustomAPIException(status_code=500, detail=f"Failed to fetch image: {url}, Error: {str(e)}")
 
+
+
+
 semaphore = asyncio.Semaphore(10)
 
 async def fetch_with_limit(client, url):
@@ -184,7 +187,7 @@ def convert_urls_to_pdf_sync(image_urls, pdf_filename):
         for url in image_urls:
             try:
                 urlX = url
-                # img = fetch_image_sync(client, url)
+                img = fetch_image_sync(client, url)
                 # images.append(img.convert("RGB"))
             except Exception as e:
                 raise CustomAPIException(status_code=500, detail=str(e))
