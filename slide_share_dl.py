@@ -176,6 +176,21 @@ def convert_urls_to_pdf_sync(image_urls, pdf_filename):
 
     images = []
 
+
+    return {
+        "success": True,
+        "data": json.dumps({
+            "thumbnail": "",
+            "quality": "",
+            "conversion_type": "",
+            "slides_download_link": "",
+            "file_name": "",
+            "size": 1024,
+            "title": "as"
+        })
+
+    }
+
     # Download images one-by-one
     with httpx.Client(timeout=20) as client:
         for url in image_urls:
@@ -396,21 +411,6 @@ async def get_slides_download_link(url: str, conversion_type: SlidesConversionTy
         raise CustomAPIException(status_code=404, detail=f"No {quality}px resolution slides found.")
 
     thumbnail = high_res_images[0]
-
-
-    return {
-        "success": True,
-        "data": json.dumps({
-            "thumbnail": "",
-            "quality": quality_type.value,
-            "conversion_type": conversion_type.value,
-            "slides_download_link": "",
-            "file_name": "",
-            "size": 1024,
-            "title": title
-        })
-
-    }
 
 
     if conversion_type == SlidesConversionType.pdf:
