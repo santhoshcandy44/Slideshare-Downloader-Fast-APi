@@ -69,11 +69,9 @@ def fetch_slide_images_all_resolutions(url):
 async def fetch_image(client: httpx.AsyncClient, url: str):
     try:
         response = await client.get(url)
-        print(f'Image response fetched {url}')
         response.raise_for_status()
 
         img = Image.open(BytesIO(response.content)).convert("RGB")
-        print(f'Image opened {url}')
 
         # Save image to temp file
         temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg")
@@ -176,7 +174,6 @@ def convert_image_paths_to_pdf(image_paths, pdf_path):
         for path in image_paths:
             try:
                 os.remove(path)
-                print(f"Removed {path}")
             except Exception as cleanup_err:
                 print(f"Failed to delete temp file: {path}. Error: {cleanup_err}")
 
