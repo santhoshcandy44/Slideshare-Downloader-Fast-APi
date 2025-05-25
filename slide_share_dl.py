@@ -73,13 +73,18 @@ async def fetch_image(client: httpx.AsyncClient, url: str):
         raise CustomAPIException(status_code=500, detail=f"Failed to fetch image: {url}, Error: {str(e)}")
 
 
+semaphore = asyncio.Semaphore(10)
+
+async def fetch_with_limit(client, url):
+    async with semaphore:
+        return await fetch_image(client, url)
 
 async def convert_urls_to_pdf_async(image_urls, pdf_filename):
     images = []
 
     # Download images asynchronously
     async with httpx.AsyncClient(timeout=20) as client:
-        tasks = [fetch_image(client, url) for url in image_urls]
+        tasks = [fetch_with_limit(client, url) for url in image_urls]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         for result in results:
@@ -146,7 +151,7 @@ async def convert_urls_to_pptx_async(image_urls, pptx_filename):
     blank_slide_layout = prs.slide_layouts[6]
 
     async with httpx.AsyncClient(timeout=20) as client:
-        tasks = [fetch_image(client, url) for url in image_urls]
+        tasks = [fetch_with_limit(client, url) for url in image_urls]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
     for result in results:
@@ -207,7 +212,7 @@ import zipfile
 
 async def convert_urls_to_zip_async(image_urls, zip_filename):
     async with httpx.AsyncClient(timeout=20) as client:
-        tasks = [fetch_image(client, url) for url in image_urls]
+        tasks = [fetch_with_limit(client, url) for url in image_urls]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
     # Create a temporary file for the zip
